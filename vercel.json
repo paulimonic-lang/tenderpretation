@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/tenders/live",
+      "destination": "https://tenderpretation-app.onrender.com/api/tenders/live"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

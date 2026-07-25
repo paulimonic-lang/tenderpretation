@@ -1,38 +1,42 @@
 export const liveEtendersService = {
   fetchLiveRealTenders: async (limit = 2000) => {
-    const renderApiUrl = `https://tenderpretation-app.onrender.com/api/tenders/live?limit=${limit}`;
-    const localApiUrl = `http://localhost:5000/api/tenders/live?limit=${limit}`;
-
-    // Helper for fetch with timeout & auto-retry
-    const fetchWithRetry = async (url, retries = 3, delay = 2000) => {
-      for (let i = 0; i < retries; i++) {
-        try {
-          console.log(`[Attempt ${i + 1}/${retries}] Querying SA Procurement Cloud Engine: ${url}`);
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && data.tenders && data.tenders.length > 0) {
-              return data;
-            }
-          }
-        } catch (err) {
-          console.warn(`Attempt ${i + 1} note:`, err.message);
+    // 1. Same-Origin Vercel Edge Proxy (/api/tenders/live -> Render)
+    try {
+      console.log('🇿🇦 Querying Same-Origin Vercel Edge Proxy...');
+      const proxyRes = await fetch(`/api/tenders/live?limit=${limit}`);
+      if (proxyRes.ok) {
+        const data = await proxyRes.json();
+        if (data.success && data.tenders && data.tenders.length > 0) {
+          console.log(`✓ Edge Proxy Sync Success! Loaded ${data.tenders.length} real active tenders.`);
+          return { success: true, tenders: data.tenders, recordsTotal: data.recordsTotal, sourceName: 'eTenders.gov.za Live Cloud API' };
         }
-        if (i < retries - 1) await new Promise(r => setTimeout(r, delay));
       }
-      return null;
-    };
-
-    // 1. Query Render Cloud Server (with 3 automatic retries for cold starts)
-    const cloudData = await fetchWithRetry(renderApiUrl, 3, 2000);
-    if (cloudData) {
-      console.log(`✓ Cloud Sync Success! Loaded ${cloudData.tenders.length} real tenders.`);
-      return { success: true, tenders: cloudData.tenders, recordsTotal: cloudData.recordsTotal, sourceName: 'eTenders.gov.za Live Cloud API' };
+    } catch (err) {
+      console.warn('Vercel Edge Proxy note:', err);
     }
 
-    // 2. Query Local Express Server
+    // 2. Direct Render Cloud Server (with 3 automatic retries for cold starts)
+    const renderApiUrl = `https://tenderpretation-app.onrender.com/api/tenders/live?limit=${limit}`;
+    for (let i = 0; i < 3; i++) {
+      try {
+        console.log(`[Attempt ${i + 1}/3] Querying Render Cloud API directly: ${renderApiUrl}`);
+        const res = await fetch(renderApiUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.tenders && data.tenders.length > 0) {
+            console.log(`✓ Render Direct Sync Success! Loaded ${data.tenders.length} real active tenders.`);
+            return { success: true, tenders: data.tenders, recordsTotal: data.recordsTotal, sourceName: 'eTenders.gov.za Live Cloud API' };
+          }
+        }
+      } catch (err) {
+        console.warn(`Attempt ${i + 1} note:`, err.message);
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    // 3. Local Express Server Fallback
     try {
-      const localRes = await fetch(localApiUrl);
+      const localRes = await fetch(`http://localhost:5000/api/tenders/live?limit=${limit}`);
       if (localRes.ok) {
         const localData = await localRes.json();
         if (localData.success && localData.tenders && localData.tenders.length > 0) {
@@ -40,7 +44,7 @@ export const liveEtendersService = {
         }
       }
     } catch (err) {
-      // Local server fallback note
+      // Local fallback note
     }
 
     return { success: false, tenders: [] };

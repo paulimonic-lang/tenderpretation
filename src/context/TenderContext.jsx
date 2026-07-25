@@ -19,10 +19,18 @@ export const TenderProvider = ({ children }) => {
   const [isLiveFeedActive, setIsLiveFeedActive] = useState(true);
   const [isSyncingLive, setIsSyncingLive] = useState(false);
 
-  // Master Tenders List
+  // Master Tenders List (Bypass old 6-sample localStorage cache)
   const [masterTenders, setMasterTenders] = useState(() => {
-    const custom = localStorage.getItem('gt_master_tenders');
-    return custom ? JSON.parse(custom) : SAMPLE_TENDERS;
+    try {
+      const custom = localStorage.getItem('gt_master_tenders');
+      if (custom) {
+        const parsed = JSON.parse(custom);
+        if (Array.isArray(parsed) && parsed.length > 10) return parsed;
+      }
+    } catch (e) {
+      // Ignore cache parse error
+    }
+    return SAMPLE_TENDERS;
   });
 
   // Theme State

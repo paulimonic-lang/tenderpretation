@@ -5,43 +5,57 @@ import axios from 'axios';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Enable Full Permissive CORS for Vercel & Mobile Apps
+app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
+
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
+
+// Root Health Check Route
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    app: 'Tenderpretation SA Procurement Intelligence API Server 🇿🇦',
+    endpoint: '/api/tenders/live',
+    documentation: 'https://github.com/paulimonic-lang/tenderpretation'
+  });
+});
 
 // Intelligent Contract Valuation Estimator based on CIDB Grading, Organ of State, and Solicitation Type
 function estimateTenderContractValue(item, catId) {
   const text = `${item.description || ''} ${item.conditions || ''} ${item.type || ''}`.toLowerCase();
   
-  // 1. CIDB Grading Evaluation (South African Construction Industry Development Board Rules)
   if (text.includes('9ce') || text.includes('9gb') || text.includes('9ep') || text.includes('grade 9')) {
-    return 150000000 + ((item.id % 50) * 10000000); // R150M - R650M
+    return 150000000 + ((item.id % 50) * 10000000);
   }
   if (text.includes('8ce') || text.includes('8gb') || text.includes('8ep') || text.includes('grade 8')) {
-    return 45000000 + ((item.id % 30) * 2000000); // R45M - R105M
+    return 45000000 + ((item.id % 30) * 2000000);
   }
   if (text.includes('7ce') || text.includes('7gb') || text.includes('7ep') || text.includes('grade 7')) {
-    return 22000000 + ((item.id % 20) * 800000); // R22M - R38M
+    return 22000000 + ((item.id % 20) * 800000);
   }
   if (text.includes('6ce') || text.includes('6gb') || text.includes('grade 6')) {
-    return 12000000 + ((item.id % 15) * 500000); // R12M - R19.5M
+    return 12000000 + ((item.id % 15) * 500000);
   }
   if (text.includes('5ce') || text.includes('5gb') || text.includes('grade 5')) {
-    return 5000000 + ((item.id % 10) * 400000); // R5M - R9M
+    return 5000000 + ((item.id % 10) * 400000);
   }
   if (text.includes('4ce') || text.includes('4gb') || text.includes('grade 4')) {
-    return 2000000 + ((item.id % 10) * 200000); // R2M - R4M
+    return 2000000 + ((item.id % 10) * 200000);
   }
 
-  // 2. Department / Organ of State Scope Evaluation
   const dept = (item.organ_of_State || item.department || '').toLowerCase();
   if (dept.includes('eskom') || dept.includes('transnet') || dept.includes('sanral') || dept.includes('water affairs')) {
-    return 35000000 + ((item.id % 40) * 2500000); // R35M - R135M
+    return 35000000 + ((item.id % 40) * 2500000);
   }
   if (dept.includes('sita') || dept.includes('treasury') || dept.includes('health') || dept.includes('city of') || dept.includes('metro')) {
-    return 12500000 + ((item.id % 30) * 1000000); // R12.5M - R42.5M
+    return 12500000 + ((item.id % 30) * 1000000);
   }
 
-  // 3. Category & Solicitation Type Evaluation
   if (catId === 'infrastructure' || catId === 'green-energy') {
     return 18000000 + ((item.id % 30) * 1500000);
   }
@@ -49,7 +63,6 @@ function estimateTenderContractValue(item, catId) {
     return 8500000 + ((item.id % 25) * 800000);
   }
 
-  // Default RFQ / RFP Baseline
   return 1500000 + ((item.id % 20) * 350000);
 }
 
@@ -106,10 +119,8 @@ app.get('/api/tenders/live', async (req, res) => {
       else if (provLower.includes('north west')) provinceId = 'north-west';
       else if (provLower.includes('northern')) provinceId = 'northern-cape';
 
-      // Intelligent Valuation Model Calculation
       const estimatedValue = estimateTenderContractValue(item, catId);
 
-      // Parse Authentic Original PDF Download Links
       const docs = (item.supportDocument && item.supportDocument.length > 0)
         ? item.supportDocument.map(d => {
             const ext = d.extension || '.pdf';
@@ -187,5 +198,5 @@ app.get('/api/tenders/live', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Live Real-Time eTenders.gov.za Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Live Real-Time eTenders.gov.za Server running on port ${PORT}`);
 });

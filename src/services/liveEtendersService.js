@@ -1,21 +1,34 @@
 export const liveEtendersService = {
   fetchLiveRealTenders: async (limit = 2000) => {
-    // 1. Try local Express scraper backend (http://localhost:5000)
+    // 1. Primary Live Cloud Server (Render)
     try {
-      console.log('🇿🇦 Ingesting FULL CATALOG of REAL LIVE TENDERS from etenders.gov.za via backend server...');
+      console.log('🇿🇦 Querying Render Live Backend Server for 1,800+ SA tenders...');
+      const cloudRes = await fetch(`https://tenderpretation-app.onrender.com/api/tenders/live?limit=${limit}`);
+      if (cloudRes.ok) {
+        const data = await cloudRes.json();
+        if (data.success && data.tenders && data.tenders.length > 0) {
+          console.log(`✓ Live Cloud Sync Complete! Loaded ALL ${data.tenders.length} active tenders from etenders.gov.za`);
+          return { success: true, tenders: data.tenders, recordsTotal: data.recordsTotal, sourceName: 'eTenders.gov.za Live Cloud API' };
+        }
+      }
+    } catch (err) {
+      console.warn('Render cloud server warming up, trying local server fallback...', err);
+    }
+
+    // 2. Local Express scraper backend fallback (http://localhost:5000)
+    try {
       const response = await fetch(`http://localhost:5000/api/tenders/live?limit=${limit}`);
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.tenders && data.tenders.length > 0) {
-          console.log(`✓ Live Sync Complete! Loaded ALL ${data.tenders.length} real active tenders from etenders.gov.za`);
-          return { success: true, tenders: data.tenders, recordsTotal: data.recordsTotal, sourceName: 'eTenders.gov.za Live API' };
+          return { success: true, tenders: data.tenders, recordsTotal: data.recordsTotal, sourceName: 'eTenders.gov.za Local API' };
         }
       }
     } catch (err) {
-      console.warn('Backend server on http://localhost:5000 not reachable. Attempting direct CORS fetch...', err);
+      console.warn('Local server fallback note:', err);
     }
 
-    // 2. Direct browser fetch fallback
+    // 3. Direct browser fetch fallback
     try {
       const directUrl = `https://www.etenders.gov.za/Home/PaginatedTenderOpportunities?status=1&draw=1&start=0&length=${limit}`;
       const directRes = await fetch(directUrl, {

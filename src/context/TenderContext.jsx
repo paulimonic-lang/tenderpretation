@@ -134,7 +134,7 @@ export const TenderProvider = ({ children }) => {
     setCurrentUser(null);
   };
 
-  // Fetch Live Real Data
+  // Fetch Live Real Data with Auto-Retry
   const syncLiveETendersData = async () => {
     setIsSyncingLive(true);
     const result = await liveEtendersService.fetchLiveRealTenders();
@@ -151,6 +151,15 @@ export const TenderProvider = ({ children }) => {
         type: 'match'
       };
       setNotifications(prev => [alertNotif, ...prev]);
+    } else {
+      // Auto-retry in 3.5 seconds if cloud server was sleeping
+      setTimeout(async () => {
+        const retryResult = await liveEtendersService.fetchLiveRealTenders();
+        if (retryResult.success && retryResult.tenders.length > 0) {
+          setMasterTenders(retryResult.tenders);
+          setIsLiveFeedActive(true);
+        }
+      }, 3500);
     }
     setIsSyncingLive(false);
   };

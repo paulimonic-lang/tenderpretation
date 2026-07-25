@@ -1,8 +1,7 @@
-export const liveEtendersService = {
   fetchLiveRealTenders: async (limit = 2000) => {
-    // 1. Primary Live Cloud Server (Render)
+    // 1. Primary Live Cloud Server (Render - Updated 2026-07-25)
     try {
-      console.log('🇿🇦 Querying Render Live Backend Server for 1,800+ SA tenders...');
+      console.log('🇿🇦 Querying Render Live Backend Server for 1,800+ SA tenders (https://tenderpretation-app.onrender.com)...');
       const cloudRes = await fetch(`https://tenderpretation-app.onrender.com/api/tenders/live?limit=${limit}`);
       if (cloudRes.ok) {
         const data = await cloudRes.json();

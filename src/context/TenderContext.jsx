@@ -156,8 +156,22 @@ export const TenderProvider = ({ children }) => {
     setIsSyncingLive(false);
   };
 
-  // Auto-sync real live data from etenders.gov.za on startup
+  // Auto-sync real live data from etenders.gov.za on startup & purge legacy 6-item browser cache
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem('gt_master_tenders');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length <= 50) {
+          localStorage.removeItem('gt_master_tenders');
+          if (REAL_TENDERS_CACHE && REAL_TENDERS_CACHE.length > 50) {
+            setMasterTenders(REAL_TENDERS_CACHE);
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore parse error
+    }
     syncLiveETendersData();
   }, []);
 

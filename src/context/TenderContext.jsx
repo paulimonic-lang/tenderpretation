@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import REAL_TENDERS_CACHE from '../data/realLiveTendersCache.json';
 import { SAMPLE_TENDERS } from '../data/sampleTenders';
 import { INITIAL_NOTIFICATIONS, generateSimulatedAlert } from '../services/notificationService';
 import { apiService } from '../services/apiService';
@@ -19,18 +20,18 @@ export const TenderProvider = ({ children }) => {
   const [isLiveFeedActive, setIsLiveFeedActive] = useState(true);
   const [isSyncingLive, setIsSyncingLive] = useState(false);
 
-  // Master Tenders List (Bypass old 6-sample localStorage cache)
+  // Master Tenders List (Default to 1,831 REAL active South African tenders)
   const [masterTenders, setMasterTenders] = useState(() => {
     try {
       const custom = localStorage.getItem('gt_master_tenders');
       if (custom) {
         const parsed = JSON.parse(custom);
-        if (Array.isArray(parsed) && parsed.length > 10) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 50) return parsed;
       }
     } catch (e) {
-      // Ignore cache parse error
+      // Ignore parse error
     }
-    return SAMPLE_TENDERS;
+    return (REAL_TENDERS_CACHE && REAL_TENDERS_CACHE.length > 0) ? REAL_TENDERS_CACHE : SAMPLE_TENDERS;
   });
 
   // Theme State
@@ -151,15 +152,6 @@ export const TenderProvider = ({ children }) => {
         type: 'match'
       };
       setNotifications(prev => [alertNotif, ...prev]);
-    } else {
-      // Auto-retry in 3.5 seconds if cloud server was sleeping
-      setTimeout(async () => {
-        const retryResult = await liveEtendersService.fetchLiveRealTenders();
-        if (retryResult.success && retryResult.tenders.length > 0) {
-          setMasterTenders(retryResult.tenders);
-          setIsLiveFeedActive(true);
-        }
-      }, 3500);
     }
     setIsSyncingLive(false);
   };
